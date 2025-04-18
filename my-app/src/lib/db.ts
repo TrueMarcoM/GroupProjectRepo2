@@ -11,10 +11,6 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-console.log("host", process.env.DB_HOST);
-console.log("user", process.env.DB_USER);
-console.log("password", process.env.DB_PASSWORD);
-
 // Function to execute queries with parameterized statements (prevents SQL injection)
 export async function executeQuery<T>({
   query,
