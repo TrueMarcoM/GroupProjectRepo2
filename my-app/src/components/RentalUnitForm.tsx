@@ -43,9 +43,6 @@ export default function RentalUnitForm({ onSuccess }: RentalUnitFormProps) {
     setError(null);
 
     try {
-      // Combine features list into comma-separated string
-      const featuresString = featuresList.join(", ");
-
       const response = await fetch("/api/rentals", {
         method: "POST",
         headers: {
@@ -53,7 +50,7 @@ export default function RentalUnitForm({ onSuccess }: RentalUnitFormProps) {
         },
         body: JSON.stringify({
           ...formData,
-          features: featuresString,
+          features: featuresList.join(", "),
           price: parseFloat(formData.price),
         }),
       });
@@ -61,7 +58,15 @@ export default function RentalUnitForm({ onSuccess }: RentalUnitFormProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to create rental unit");
+        if (response.status === 403) {
+          // Special handling for daily limit
+          setError(
+            "You have reached the daily limit of 2 rental posts. Please try again tomorrow."
+          );
+        } else {
+          throw new Error(data.message || "Failed to create rental unit");
+        }
+        return;
       }
 
       // Reset form on success
@@ -72,8 +77,6 @@ export default function RentalUnitForm({ onSuccess }: RentalUnitFormProps) {
         price: "",
       });
       setFeaturesList([]);
-
-      // Notify parent component of success
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { executeQuery } from "@/lib/db";
+import { executeQuery, executeTransaction } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 
 // GET all rental units
@@ -33,19 +33,17 @@ export async function GET(req: NextRequest) {
 // POST new rental unit
 export async function POST(req: NextRequest) {
   try {
-    // Get auth token from cookie
-    const authToken = req.cookies.get("authToken")?.value;
-
-    if (!authToken) {
+    // Get auth token and verify user
+    const token = req.cookies.get("authToken")?.value;
+    if (!token) {
       return NextResponse.json(
         { success: false, message: "Not authenticated" },
         { status: 401 }
       );
     }
 
-    // Verify token
-    const decoded = verifyToken(authToken);
-    if (!decoded || !decoded.username) {
+    const decoded = verifyToken(token);
+    if (!decoded?.username) {
       return NextResponse.json(
         { success: false, message: "Invalid token" },
         { status: 401 }
@@ -53,55 +51,33 @@ export async function POST(req: NextRequest) {
     }
 
     const username = decoded.username;
+    const today = new Date().toISOString().split("T")[0];
 
-    // Check daily posting limit (2 per day)
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-    // Get or create daily count record
-    const countResult = await executeQuery<any[]>({
-      query: "SELECT * FROM user_rental_count WHERE username = ?",
-      values: [username],
+    // Check daily post count
+    const [countResult] = await executeQuery<any[]>({
+      query: `
+        SELECT count FROM user_rental_count 
+        WHERE username = ? AND post_date = ?
+      `,
+      values: [username, today],
     });
 
-    let currentCount = 0;
+    const currentCount = countResult?.count || 0;
 
-    if (countResult.length > 0) {
-      const record = countResult[0];
-      // If record is from today, use current count
-      if (record.date === today) {
-        currentCount = record.count;
-
-        // Check if user has reached daily limit
-        if (currentCount >= 2) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "Daily posting limit reached (2 per day)",
-            },
-            { status: 403 }
-          );
-        }
-      } else {
-        // Reset count for new day
-        await executeQuery({
-          query:
-            "UPDATE user_rental_count SET count = 0, date = ? WHERE username = ?",
-          values: [today, username],
-        });
-      }
-    } else {
-      // Create new count record
-      await executeQuery({
-        query:
-          "INSERT INTO user_rental_count (username, count, date) VALUES (?, 0, ?)",
-        values: [username, today],
-      });
+    if (currentCount >= 2) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You have reached the daily limit of 2 rental posts",
+        },
+        { status: 403 }
+      );
     }
 
     // Parse request body
     const { title, description, features, price } = await req.json();
 
-    // Validate required fields
+    // Validate inputs
     if (!title || !description || !features || !price) {
       return NextResponse.json(
         { success: false, message: "All fields are required" },
@@ -109,28 +85,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Insert rental unit
-    const result = await executeQuery({
-      query: `
-        INSERT INTO rental_unit (username, title, description, features, price)
-        VALUES (?, ?, ?, ?, ?)
-      `,
-      values: [username, title, description, features, price],
-    });
-
-    // Increment user's daily count
-    await executeQuery({
-      query:
-        "UPDATE user_rental_count SET count = count + 1 WHERE username = ?",
-      values: [username],
-    });
+    // Execute transaction
+    await executeTransaction([
+      {
+        query: `
+          INSERT INTO rental_unit 
+          (username, title, description, features, price)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        values: [username, title, description, features, price],
+      },
+      {
+        query: `
+          INSERT INTO user_rental_count (username, post_date, count)
+          VALUES (?, ?, 1)
+          ON DUPLICATE KEY UPDATE count = count + 1
+        `,
+        values: [username, today],
+      },
+    ]);
 
     return NextResponse.json(
       { success: true, message: "Rental unit created successfully" },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating rental unit:", error);
+    console.error("Error creating rental:", error);
     return NextResponse.json(
       { success: false, message: "Failed to create rental unit" },
       { status: 500 }
