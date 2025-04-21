@@ -34,10 +34,11 @@ export async function GET(
 // POST new review
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const rentalId = params.id;
+    const resolvedParams = await params;
+    const rentalId = resolvedParams.id;
 
     // Get auth token from cookie
     const authToken = req.cookies.get("authToken")?.value;
@@ -99,45 +100,24 @@ export async function POST(
     // Check daily review limit (3 per day)
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-    // Get or create daily count record
-    const countResult = await executeQuery<any[]>({
-      query: "SELECT * FROM user_review_count WHERE username = ?",
-      values: [username],
+    const [countResult] = await executeQuery<any[]>({
+      query: `
+        SELECT count FROM user_review_count 
+        WHERE username = ? AND post_date = ?
+      `,
+      values: [username, today],
     });
 
-    let currentCount = 0;
+    const currentCount = countResult?.count || 0;
 
-    if (countResult.length > 0) {
-      const record = countResult[0];
-      // If record is from today, use current count
-      if (record.date === today) {
-        currentCount = record.count;
-
-        // Check if user has reached daily limit
-        if (currentCount >= 3) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "Daily review limit reached (3 per day)",
-            },
-            { status: 403 }
-          );
-        }
-      } else {
-        // Reset count for new day
-        await executeQuery({
-          query:
-            "UPDATE user_review_count SET count = 0, date = ? WHERE username = ?",
-          values: [today, username],
-        });
-      }
-    } else {
-      // Create new count record
-      await executeQuery({
-        query:
-          "INSERT INTO user_review_count (username, count, date) VALUES (?, 0, ?)",
-        values: [username, today],
-      });
+    if (currentCount >= 3) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You have reached the daily limit of 3 reviews",
+        },
+        { status: 403 }
+      );
     }
 
     // Parse request body
@@ -168,11 +148,14 @@ export async function POST(
       values: [rentalId, username, rating, description],
     });
 
-    // Increment user's daily count
+    // Update review count
     await executeQuery({
-      query:
-        "UPDATE user_review_count SET count = count + 1 WHERE username = ?",
-      values: [username],
+      query: `
+        INSERT INTO user_review_count (username, post_date, count)
+        VALUES (?, ?, 1)
+        ON DUPLICATE KEY UPDATE count = count + 1
+      `,
+      values: [username, today],
     });
 
     return NextResponse.json(
