@@ -2,9 +2,9 @@
 
 **Phase 1**: A secure authentication system built with Next.js, MySQL, and modern security practices to provide user registration and login functionality.
 
-## Youtube URL
+## Youtube Phase 2 URL
 
-https://youtu.be/BDCvCPT6Npo
+https://www.youtube.com/watch?v=zsYjvrtr3Yg
 
 ## Tech Stack
 
