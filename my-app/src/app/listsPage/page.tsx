@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import RentalUnitForm from "@/components/RentalUnitForm";
 import RentalSearch from "@/components/RentalSearch";
 import ReviewForm from "@/components/ReviewForm";
-import ListAllUserPoorReviews from '@/components/ListAllUserPoorReviews';
+import ListAllUserPoorReviews from '@/components/ListAllUserPoorReviews'; //==
+import ListAllUsersNoNegativeUnits from '@/components/ListAllUsersNoNegativeUnits'; //==
 
 interface RentalUnit {
   id: number;
@@ -125,36 +126,6 @@ export default function ListsPage() {
       <main className="container mx-auto px-4 py-6">
         <div className="flex border-b border-gray-200 mb-6">
           <button
-            onClick={() => setActiveTab("myRentals")}
-            className={`px-4 py-2 font-medium ${
-              activeTab === "myRentals"
-                ? "text-sky-600 border-b-2 border-sky-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            My Rentals
-          </button>
-          <button
-            onClick={() => setActiveTab("search")}
-            className={`px-4 py-2 font-medium ${
-              activeTab === "search"
-                ? "text-sky-600 border-b-2 border-sky-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Search Rentals
-          </button>
-          <button
-            onClick={() => setActiveTab("addRental")}
-            className={`px-4 py-2 font-medium ${
-              activeTab === "addRental"
-                ? "text-sky-600 border-b-2 border-sky-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Add Rental
-          </button>
-          <button
             onClick={() => setActiveTab("showUserPoorReviews")}
             className={`px-4 py-2 font-medium ${
               activeTab === "showUserPoorReviews"
@@ -163,6 +134,16 @@ export default function ListsPage() {
             }`}
           >
             Show User Poor Reviews
+          </button>
+          <button
+            onClick={() => setActiveTab("showUsersNonNegativeUnits")}
+            className={`px-4 py-2 font-medium ${
+              activeTab === "showUsersNonNegativeUnits"
+                ? "text-sky-600 border-b-2 border-sky-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Show users with no negative units
           </button>
         </div>
 
@@ -221,16 +202,9 @@ export default function ListsPage() {
           </div>
         )}
 
-        {activeTab === "search" && (
-          <RentalSearch onSelectRental={handleViewRental} />
-        )}
 
-        {activeTab === "addRental" && (
-          <RentalUnitForm onSuccess={handleRentalAdded} />
-        )}
-
-        {selectedRental && (
-          <ReviewForm rental={selectedRental} onClose={handleCloseReview} />
+        {activeTab ==="showUsersNonNegativeUnits" && (
+            <ListAllUsersNoNegativeUnits />
         )}
 
         {activeTab === "showUserPoorReviews" && (
