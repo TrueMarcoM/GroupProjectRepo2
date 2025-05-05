@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 export default function ListAllUserPoorReviews() {
-  const [users, setUsers] = useState<string[]>([]);
+  const [reviews, setReviews] = useState<{ username: string; unitTitle: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,10 +18,15 @@ export default function ListAllUserPoorReviews() {
         throw new Error(data.message || "Failed to fetch users");
       }
 
-      setUsers(data.users.map((user: { username: string }) => user.username));
+      setReviews(
+        data.reviews.map((review: { username: string; unitTitle: string }) => ({
+          username: review.username,
+          unitTitle: review.unitTitle,
+        }))
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      setUsers([]);
+      setReviews([]);
     } finally {
       setIsLoading(false);
     }
@@ -38,23 +43,25 @@ export default function ListAllUserPoorReviews() {
         disabled={isLoading}
         className="bg-sky-500 text-white py-2 px-4 rounded-md hover:bg-sky-600 transition duration-200 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-70"
       >
-        {isLoading ? "Loading..." : "Fetch Users"}
+        {isLoading ? "Loading..." : "Fetch Reviews"}
       </button>
 
       {error && (
         <div className="bg-red-100 text-red-700 p-3 rounded mt-4">{error}</div>
       )}
 
-      {users.length > 0 && (
+      {reviews.length > 0 && (
         <ul className="mt-4 list-disc list-inside text-gray-700">
-          {users.map((username, index) => (
-            <li key={index}>{username}</li>
+          {reviews.map((review, index) => (
+            <li key={index}>
+              {review.username} reviewed "{review.unitTitle}" as poor
+            </li>
           ))}
         </ul>
       )}
 
-      {users.length === 0 && !isLoading && !error && (
-        <p className="mt-4 text-gray-500">No users found with poor reviews.</p>
+      {reviews.length === 0 && !isLoading && !error && (
+        <p className="mt-4 text-gray-500">No reviews found with poor ratings.</p>
       )}
     </div>
   );
