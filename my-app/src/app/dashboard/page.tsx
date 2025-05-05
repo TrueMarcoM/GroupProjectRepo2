@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import RentalUnitForm from "@/components/RentalUnitForm";
 import RentalSearch from "@/components/RentalSearch";
 import ReviewForm from "@/components/ReviewForm";
+import Link from "next/link";
 
 interface RentalUnit {
   id: number;
@@ -110,6 +111,9 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">Rental Dashboard</h1>
           <div className="flex items-center space-x-4">
+            <Link href="/analytics" className="text-white hover:text-sky-200">
+              Analytics
+            </Link>
             <span>Welcome, {user?.firstName}!</span>
             <button
               onClick={handleLogout}
@@ -120,7 +124,6 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-6">
         <div className="flex border-b border-gray-200 mb-6">
           <button
